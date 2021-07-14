@@ -7,8 +7,28 @@ CREATE TABLE IF NOT EXISTS user (
     age INTEGER NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS user_id_index ON user (
-    id
+CREATE INDEX IF NOT EXISTS index1 ON user (
+    id, name, age
+);
+
+CREATE INDEX IF NOT EXISTS index2 ON user (
+    id, age, name
+);
+
+CREATE INDEX IF NOT EXISTS index3 ON user (
+    name, id, age
+);
+
+CREATE INDEX IF NOT EXISTS index4 ON user (
+    name, age, id
+);
+
+CREATE INDEX IF NOT EXISTS index5 ON user (
+    age, id, name
+);
+
+CREATE INDEX IF NOT EXISTS index6 ON user (
+    age, name, id
 );
 "#;
 
@@ -36,7 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let tx = conn.transaction()?;
-    let stmt = tx.prepare(
+    let mut stmt = tx.prepare(
         r#"
         INSERT INTO user
             (id, name, age)
@@ -51,7 +71,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             SqlParam::U16(i as u16),
         ])?;
     }
+    drop(stmt);
     tx.commit()?;
+
+    log::info!("End");
 
     Ok(())
 }

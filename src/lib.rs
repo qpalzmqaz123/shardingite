@@ -114,6 +114,15 @@ impl ShardingIte {
     }
 }
 
+impl Drop for ShardingIte {
+    fn drop(&mut self) {
+        // Send exit message
+        for i in 0..self.config.sharding_count {
+            self.send_data(i, DataCall::Exit).ok();
+        }
+    }
+}
+
 pub struct Transaction<'a> {
     sharding_ite: &'a ShardingIte,
 }
@@ -191,6 +200,7 @@ impl<'a> Transaction<'a> {
 pub struct Statement<'a> {
     transaction: &'a Transaction<'a>,
     ast: sqlparser::ast::Statement,
+    exec_counter: usize,
 }
 
 impl<'a> Statement<'a> {
@@ -198,10 +208,11 @@ impl<'a> Statement<'a> {
         Ok(Self {
             transaction: tc,
             ast,
+            exec_counter: 0,
         })
     }
 
-    pub fn execute(&self, params: Vec<SqlParam>) -> Result<()> {
+    pub fn execute(&mut self, params: Vec<SqlParam>) -> Result<()> {
         let list = Router::get_indexes_with_params(
             &self.transaction.sharding_ite.config,
             &self.ast,
@@ -215,22 +226,20 @@ impl<'a> Statement<'a> {
             self.transaction
                 .sharding_ite
                 .send_data(*i, DataCall::TransactionExecute(params.clone()))?;
-        }
-
-        // Wait execute
-        for _ in &list {
-            match self.transaction.sharding_ite.ret_rx.recv()?.1 {
-                DataRet::TransactionExecute(ret) => ret?,
-                e @ _ => {
-                    return Err(format!(
-                        "Message mismatch in wait transaction statement execute: {:?}",
-                        e
-                    )
-                    .into());
-                }
-            }
+            self.exec_counter += 1;
         }
 
         Ok(())
+    }
+}
+
+impl<'a> Drop for Statement<'a> {
+    fn drop(&mut self) {
+        // Wait all exec are consumed
+        for _ in 0..self.exec_counter {
+            if self.transaction.sharding_ite.ret_rx.recv().is_err() {
+                break;
+            }
+        }
     }
 }

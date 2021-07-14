@@ -26,6 +26,7 @@ impl rusqlite::ToSql for SqlParam {
 
 #[derive(Debug)]
 pub enum DataCall {
+    Exit,
     Execute(String, Arc<Vec<SqlParam>>),
     Transaction,
     TransactionPrepare(String),
@@ -68,6 +69,10 @@ impl SqlDaemon {
         loop {
             let call = self.rx.recv()?;
             match call {
+                DataCall::Exit => {
+                    log::debug!("[{}] Exit", self.index);
+                    return Ok(());
+                }
                 DataCall::Execute(sql, params) => {
                     log::trace!("[{}] Execute sql: {}", self.index, sql);
                     let res = self
@@ -116,7 +121,7 @@ impl SqlDaemon {
                     loop {
                         match self.rx.recv()? {
                             DataCall::TransactionExecute(params) => {
-                                log::trace!("[{}] Transaction execute", self.index);
+                                log::trace!("[{}] Transaction execute: {:?}", self.index, params);
                                 match stmt.execute(&*param_vec_to_tosql_vec(&params)) {
                                     Ok(_) => {
                                         self.tx.send((

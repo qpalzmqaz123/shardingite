@@ -1,4 +1,4 @@
-use shardingite::{ShardingIte, ShardingIteConfig, SqlParam};
+use shardingite::{ShardingIte, ShardingIteConfig, SqlParam, NO_PARAMS};
 
 const INIT_SQL: &str = r#"
 CREATE TABLE IF NOT EXISTS user (
@@ -31,30 +31,26 @@ CREATE INDEX IF NOT EXISTS index6 ON user (
     age, name, id
 );
 "#;
+const SHARDING_COUNT: u32 = 2;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
     let conn = ShardingIte::new(ShardingIteConfig {
-        sharding_count: 2,
+        sharding_count: SHARDING_COUNT,
         sharding_path: Box::new(|i| format!("/tmp/shardingite/{}.sqlite", i)),
         sharding_table: "user".to_string(),
         sharding_column: "id".to_string(),
         sharding_index: Box::new(|param| match param {
-            SqlParam::I64(n) => Ok(*n as u32 % 2),
-            SqlParam::U32(n) => Ok(n % 2),
+            SqlParam::I64(n) => Ok(*n as u32 % SHARDING_COUNT),
+            SqlParam::U32(n) => Ok(n % SHARDING_COUNT),
             p @ _ => Err(format!("Invalid param: {:?}", p).into()),
         }),
     })?;
 
-    for sql in INIT_SQL
-        .split(";")
-        .map(|s| s.trim())
-        .filter(|s| s.len() > 0)
-    {
-        conn.execute(sql, vec![])?;
-    }
+    conn.execute_batch(INIT_SQL)?;
 
+    let start_time = std::time::SystemTime::now();
     let tx = conn.transaction()?;
     let mut stmt = tx.prepare(
         r#"
@@ -64,7 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             (?1, ?2, ?3)
         "#,
     )?;
-    for i in 0..10 {
+    for i in 0..10000 {
         stmt.execute(vec![
             SqlParam::U32(i),
             SqlParam::String(format!("name{}", i)),
@@ -73,8 +69,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     drop(stmt);
     tx.commit()?;
+    log::info!("time: {}ms", start_time.elapsed().unwrap().as_millis());
 
-    log::info!("End");
+    let start_time = std::time::SystemTime::now();
+    let stmt = conn.prepare(
+        r#"
+        SELECT id, name, age
+        FROM user
+        ORDER BY id ASC
+        LIMIT 10
+        OFFSET 9990
+    "#,
+    )?;
+    let mut rows = stmt.query(NO_PARAMS)?;
+    while let Some(row) = rows.next()? {
+        println!("{:?}", row);
+    }
+    log::info!("time: {}ms", start_time.elapsed().unwrap().as_millis());
 
     Ok(())
 }

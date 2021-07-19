@@ -124,11 +124,7 @@ impl ShardingIte {
         F: FnOnce(Row) -> Result<T>,
     {
         let stmt = self.prepare(sql)?;
-        if let Some(row) = stmt.query(params)?.next()? {
-            return f(row);
-        }
-
-        return Err("Query is empty".into());
+        stmt.query_row(params, f)
     }
 
     pub fn last_insert_rowid(&self) -> i64 {
@@ -351,6 +347,17 @@ impl<'a> Statement<'a> {
         }
 
         Ok(Rows::new(self.sharding_ite, list, query)?)
+    }
+
+    pub fn query_row<T, F>(&self, params: Vec<SqlParam>, f: F) -> Result<T>
+    where
+        F: FnOnce(Row) -> Result<T>,
+    {
+        if let Some(row) = self.query(params)?.next()? {
+            return f(row);
+        }
+
+        return Err("Query is empty".into());
     }
 
     pub fn query_map<F, T>(&self, params: Vec<SqlParam>, map: F) -> Result<MappedRows<'_, F>>

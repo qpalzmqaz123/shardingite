@@ -123,7 +123,7 @@ impl ShardingIte {
     where
         F: FnOnce(Row) -> Result<T>,
     {
-        let stmt = self.prepare(sql)?;
+        let mut stmt = self.prepare(sql)?;
         stmt.query_row(params, f)
     }
 
@@ -325,7 +325,7 @@ impl<'a> Statement<'a> {
         Ok(())
     }
 
-    pub fn query(&self, params: Vec<SqlParam>) -> Result<Rows> {
+    pub fn query(&mut self, params: Vec<SqlParam>) -> Result<Rows> {
         let list = Router::get_indexes_with_params(&self.sharding_ite.config, &self.ast, &params)?;
         let params = Arc::new(params);
         let query = Parser::get_query_from_ast(&self.ast)?;
@@ -349,7 +349,7 @@ impl<'a> Statement<'a> {
         Ok(Rows::new(self.sharding_ite, list, query)?)
     }
 
-    pub fn query_row<T, F>(&self, params: Vec<SqlParam>, f: F) -> Result<T>
+    pub fn query_row<T, F>(&mut self, params: Vec<SqlParam>, f: F) -> Result<T>
     where
         F: FnOnce(Row) -> Result<T>,
     {
@@ -360,7 +360,7 @@ impl<'a> Statement<'a> {
         return Err("Query is empty".into());
     }
 
-    pub fn query_map<F, T>(&self, params: Vec<SqlParam>, map: F) -> Result<MappedRows<'_, F>>
+    pub fn query_map<F, T>(&mut self, params: Vec<SqlParam>, map: F) -> Result<MappedRows<'_, F>>
     where
         F: FnMut(&Row) -> Result<T>,
     {

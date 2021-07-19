@@ -70,7 +70,7 @@ mod crud {
 
         // Query exact 2
         {
-            let stmt = conn
+            let mut stmt = conn
                 .prepare("SELECT id, name, age FROM user WHERE id = 2")
                 .unwrap();
             let rows: Vec<(u32, String, u8)> = stmt
@@ -85,7 +85,7 @@ mod crud {
 
         // Query range asc
         {
-            let stmt = conn
+            let mut stmt = conn
                 .prepare("SELECT id, name, age FROM user WHERE id >= 6 ORDER BY id ASC")
                 .unwrap();
             let rows: Vec<(u32, String, u8)> = stmt
@@ -108,7 +108,7 @@ mod crud {
 
         // Query range desc
         {
-            let stmt = conn
+            let mut stmt = conn
                 .prepare("SELECT id, name, age FROM user WHERE id >= 6 ORDER BY id DESC")
                 .unwrap();
             let rows: Vec<(u32, String, u8)> = stmt
@@ -131,7 +131,7 @@ mod crud {
 
         // Query limit
         {
-            let stmt = conn
+            let mut stmt = conn
                 .prepare("SELECT id, name, age FROM user WHERE id >= 2 ORDER BY id ASC LIMIT 3")
                 .unwrap();
             let rows: Vec<(u32, String, u8)> = stmt
@@ -153,7 +153,7 @@ mod crud {
 
         // Query offset
         {
-            let stmt = conn
+            let mut stmt = conn
                 .prepare(
                     "SELECT id, name, age FROM user WHERE id >= 2 ORDER BY id ASC LIMIT 3 OFFSET 1",
                 )

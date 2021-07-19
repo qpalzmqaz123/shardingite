@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("time: {}ms", start_time.elapsed().unwrap().as_millis());
 
     let start_time = std::time::SystemTime::now();
-    let stmt = conn.prepare(
+    let mut stmt = conn.prepare(
         r#"
         SELECT id, name, age
         FROM user

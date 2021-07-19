@@ -124,7 +124,7 @@ impl Parser {
                             SelectItem::UnnamedExpr(expr) => {
                                 if let Expr::Function(f) = expr {
                                     let name = f.name.0[0].value.clone();
-                                    match name.as_str() {
+                                    match name.as_str().to_lowercase().as_str() {
                                         "count" => {
                                             if projection.len() > 1 {
                                                 return Err("Currently only supports count function alone in query function".into());
@@ -138,9 +138,10 @@ impl Parser {
 
                                             return Err("Currently only supports * with count function in query function".into());
                                         }
+                                        "json_extract" => {}
                                         _ => {
                                             return {
-                                                Err("Currently only supports ['count'] filed in query function"
+                                                Err("Currently only supports ['count', 'json_extract'] filed in query function"
                                                     .into())
                                             }
                                         }

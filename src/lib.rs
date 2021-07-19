@@ -143,6 +143,19 @@ impl ShardingIte {
     }
 }
 
+impl Default for ShardingIte {
+    fn default() -> Self {
+        Self::new(ShardingIteConfig {
+            sharding_count: 0,
+            sharding_table: "".to_string(),
+            sharding_column: "".to_string(),
+            sharding_path: Box::new(|_| unreachable!()),
+            sharding_index: Box::new(|_| unreachable!()),
+        })
+        .unwrap()
+    }
+}
+
 impl Drop for ShardingIte {
     fn drop(&mut self) {
         // Send exit message

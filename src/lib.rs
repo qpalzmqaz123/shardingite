@@ -25,10 +25,10 @@ pub const NO_PARAMS: Vec<SqlParam> = Vec::new();
 
 pub struct ShardingIteConfig {
     pub sharding_count: u32,
-    pub sharding_path: Box<dyn Fn(u32) -> String>,
+    pub sharding_path: Box<dyn Fn(u32) -> String + Send>,
     pub sharding_table: String,
     pub sharding_column: String,
-    pub sharding_index: Box<dyn Fn(&SqlParam) -> Result<u32>>,
+    pub sharding_index: Box<dyn Fn(&SqlParam) -> Result<u32> + Send>,
 }
 
 pub struct ShardingIte {

@@ -131,6 +131,22 @@ impl ShardingIte {
         return Err("Query is empty".into());
     }
 
+    pub fn last_insert_rowid(&self) -> i64 {
+        // FIXME: Temporary use max id of each connections
+        for i in 0..self.config.sharding_count {
+            self.send_data(i, DataCall::LastInsertRowId).ok();
+        }
+
+        let mut max = 0;
+        for _ in 0..self.config.sharding_count {
+            if let Ok((_, DataRet::LastInsertRowId(id))) = self.ret_rx.recv() {
+                max = std::cmp::max(max, id);
+            }
+        }
+
+        max
+    }
+
     fn send_data(&self, index: u32, data: DataCall) -> Result<()> {
         let call_tx = self
             .call_map

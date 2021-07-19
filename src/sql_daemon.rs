@@ -69,6 +69,7 @@ pub enum DataCall {
     Transaction,
     TransactionCommit,
     TransactionRollback,
+    LastInsertRowId,
 }
 
 #[derive(Debug)]
@@ -80,6 +81,7 @@ pub enum DataRet {
     Transaction(rusqlite::Result<()>),
     TransactionCommit(rusqlite::Result<()>),
     TransactionRollback(rusqlite::Result<()>),
+    LastInsertRowId(i64),
 }
 
 pub struct SqlDaemon {
@@ -119,6 +121,10 @@ impl SqlDaemon {
                 DataCall::Prepare(sql) => {
                     log::trace!("[{}] Prepare: {}", self.index, sql);
                     process_prepare(self.index, &self.tx, &self.rx, &mut self.conn, sql)?;
+                }
+                DataCall::LastInsertRowId => {
+                    log::trace!("[{}] Last insert row id", self.index);
+                    process_last_insert_row_id(self.index, &self.tx, &mut self.conn)?;
                 }
                 d @ _ => log::error!("DataCall mismatch, received: {:?}", d),
             }
@@ -315,6 +321,17 @@ fn process_rows(
             }
         }
     }
+
+    Ok(())
+}
+
+fn process_last_insert_row_id(
+    index: u32,
+    tx: &Sender<(u32, DataRet)>,
+    conn: &mut rusqlite::Connection,
+) -> Result<()> {
+    let id = conn.last_insert_rowid();
+    tx.send((index, DataRet::LastInsertRowId(id)))?;
 
     Ok(())
 }
